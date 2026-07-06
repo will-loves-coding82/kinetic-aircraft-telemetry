@@ -56,16 +56,29 @@ async function getAccessToken(): Promise<string | null> {
     return tokenCache.token;
   }
 
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+      cache: "no-store",
+      // Auth server flakiness (DNS/connect issues, slow TLS) shouldn't eat
+      // the whole request budget — fail fast onto the anonymous tier below
+      // rather than hanging on undici's much longer default connect timeout,
+      // which previously bubbled all the way up and tripped fetchTelemetry-
+      // Snapshot's mock-data fallback even though bad/unreachable credentials
+      // were only ever meant to degrade to anonymous access, not to mock.
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch (error) {
+    console.error("OpenSky token request failed:", error);
+    return null;
+  }
   if (!res.ok) {
     // Bad credentials shouldn't take the whole feed down — fall back to
     // anonymous access and let the route keep serving data.
