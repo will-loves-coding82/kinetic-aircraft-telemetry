@@ -4,6 +4,9 @@ import type { TelemetryError } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Region is pinned in vercel.json (not here — preferredRegion only affects
+// the edge runtime, and this route needs Node.js for its module-level token/
+// snapshot caches). See vercel.json for the OpenSky EU-hosting rationale.
 
 /**
  * Proxy for OpenSky state vectors. Keeps credentials server-side and lets

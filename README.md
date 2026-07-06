@@ -61,6 +61,14 @@ OPENSKY_CLIENT_SECRET=...
    `s-maxage=12, stale-while-revalidate` so the CDN collapses concurrent
    viewers onto one upstream request per interval.
 
+`vercel.json` pins serverless functions to `fra1` (Frankfurt). OpenSky's
+servers are EU-hosted (Switzerland); without this, functions running in
+Vercel's default US region can hit `undici`'s connect timeout reaching
+`auth.opensky-network.org`, which silently falls back to synthetic demo data
+(look for a `DEMO` badge next to the feed status, or an "OpenSky unavailable,
+serving demo data" line in the function logs). Region changes only apply to
+new deployments — redeploy after editing `vercel.json`.
+
 ## Project layout
 
 ```

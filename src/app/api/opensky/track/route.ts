@@ -3,6 +3,7 @@ import { fetchTrack } from "@/lib/opensky";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// Region pinned in vercel.json — see states/route.ts and vercel.json.
 
 const ICAO24_RE = /^[0-9a-f]{6}$/;
 
