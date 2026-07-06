@@ -61,13 +61,36 @@ OPENSKY_CLIENT_SECRET=...
    `s-maxage=12, stale-while-revalidate` so the CDN collapses concurrent
    viewers onto one upstream request per interval.
 
-`vercel.json` pins serverless functions to `fra1` (Frankfurt). OpenSky's
-servers are EU-hosted (Switzerland); without this, functions running in
-Vercel's default US region can hit `undici`'s connect timeout reaching
-`auth.opensky-network.org`, which silently falls back to synthetic demo data
+`vercel.json` pins serverless functions to `fra1` (Frankfurt), close to
+OpenSky's Swiss servers. In practice this alone wasn't enough: OpenSky appears
+to block or drop connections from Vercel's serverless egress IPs at the
+network level (`ConnectTimeoutError`, even from `fra1`) while the exact same
+request succeeds instantly from a residential IP or other non-datacenter
+network. When this happens the app silently falls back to synthetic demo data
 (look for a `DEMO` badge next to the feed status, or an "OpenSky unavailable,
-serving demo data" line in the function logs). Region changes only apply to
-new deployments — redeploy after editing `vercel.json`.
+serving demo data" line in the function logs) — see **Relay** below for the
+fix. Region changes only apply to new deployments — redeploy after editing
+`vercel.json`.
+
+### Relay (if OpenSky blocks your host's IPs)
+
+If the function logs show `ConnectTimeoutError` reaching `opensky-network.org`
+or `auth.opensky-network.org` despite the region pin above, OpenSky is likely
+blocking your hosting provider's IP ranges rather than anything being
+misconfigured. `opensky-relay/` contains a minimal Cloudflare Worker that
+transparently proxies requests to OpenSky from Cloudflare's network instead:
+
+```bash
+cd opensky-relay
+npx wrangler deploy
+```
+
+Then set `OPENSKY_RELAY_URL` (in `.env.local` or Vercel's environment
+variables) to the deployed Worker's URL, e.g.
+`https://kinetic-opensky-relay.<your-subdomain>.workers.dev`. When set, every
+OpenSky request — token, states, and track — is routed through it instead of
+fetching `opensky-network.org` directly. Leave it unset for local dev, where
+direct requests already work fine.
 
 ## Project layout
 
