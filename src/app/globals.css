@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* surfaces */
+  --page: #eaeef2;
+  --panel: rgba(250, 250, 249, 0.9);
+  --panel-solid: #fcfcfb;
+  --panel-2: #f0efec;
+  --line: rgba(11, 11, 11, 0.08);
+  --grid: #e1e0d9;
+
+  /* ink */
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --mute: #898781;
+
+  /* accent + sequential hue (charts) */
+  --accent: #3987e5;
+  --accent-soft: #1c5cab;
+
+  /* flight-phase status colors (paired with icons + labels, never alone) */
+  --status-climb: #008300;
+  --status-cruise: #2a78d6;
+  --status-descent: #c98500;
+  --status-ground: #898781;
+  --status-alert: #d03b3b;
+
+  /* airports / bases */
+  --airport: #4a3aa7;
+
+  /* semantic feed status */
+  --good: #0ca30c;
+  --warn: #c98500;
+  --crit: #d03b3b;
+}
+
+.dark {
+  --page: #0d0d0d;
+  --panel: rgba(22, 22, 21, 0.86);
+  --panel-solid: #1a1a19;
+  --panel-2: #232322;
+  --line: rgba(255, 255, 255, 0.1);
+  --grid: #2c2c2a;
+
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --mute: #898781;
+
+  --accent: #3987e5;
+  --accent-soft: #1c5cab;
+
+  --status-climb: #008300;
+  --status-cruise: #3987e5;
+  --status-descent: #c98500;
+  --status-ground: #898781;
+  --status-alert: #d03b3b;
+
+  --airport: #9085e9;
+
+  --good: #0ca30c;
+  --warn: #eda100;
+  --crit: #d03b3b;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-panel: var(--panel);
+  --color-panel-solid: var(--panel-solid);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-grid: var(--grid);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-mute: var(--mute);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-climb: var(--status-climb);
+  --color-cruise: var(--status-cruise);
+  --color-descent: var(--status-descent);
+  --color-ground: var(--status-ground);
+  --color-alert: var(--status-alert);
+  --color-airport: var(--airport);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-crit: var(--crit);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* thin, recessive scrollbars inside panels */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--grid) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--grid);
+  border-radius: 3px;
+}
