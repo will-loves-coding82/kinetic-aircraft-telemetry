@@ -53,27 +53,6 @@ OPENSKY_CLIENT_SECRET=...
 
 `.env*` is gitignored (except `.env.example`).
 
-## Deploying to Vercel
-
-1. Push this directory to a repo and import it in Vercel.
-2. Add `OPENSKY_CLIENT_ID` / `OPENSKY_CLIENT_SECRET` as environment variables.
-3. Deploy — no other configuration needed. The API route sets
-   `s-maxage=12, stale-while-revalidate` so the CDN collapses concurrent
-   viewers onto one upstream request per interval.
-
-`vercel.json` pins serverless functions to `fra1` (Frankfurt), close to
-OpenSky's Swiss servers. Despite this, OpenSky appears to block or drop
-connections from cloud/datacenter IP ranges at the network level — this was
-confirmed against both Vercel's serverless egress (`ConnectTimeoutError`) and
-a Cloudflare Worker relay attempt (`522` from Cloudflare's own edge trying to
-reach OpenSky), while the exact same request succeeds instantly from a
-residential IP. There's currently no practical fix for this on cloud hosting:
-when it happens, the app gracefully falls back to synthetic demo data (look
-for the `DEMO` badge next to the feed status, or an "OpenSky unavailable,
-serving demo data" line in the function logs) rather than showing an error or
-a blank globe. Region changes only apply to new deployments — redeploy after
-editing `vercel.json` if you want to try a different region regardless.
-
 ## Project layout
 
 ```
