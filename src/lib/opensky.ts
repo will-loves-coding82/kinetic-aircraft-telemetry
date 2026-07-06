@@ -20,22 +20,6 @@ const TOKEN_URL =
   "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token";
 const STATES_URL = "https://opensky-network.org/api/states/all?extended=1";
 
-/**
- * Optional relay base URL (see opensky-relay/). Vercel's serverless egress
- * IPs appear to be blocked/dropped by OpenSky at the network level (connect
- * timeouts even from a region physically close to OpenSky's servers, while
- * the same request succeeds instantly from a residential IP or other
- * non-datacenter network). When set, every OpenSky request is routed through
- * this relay (a Cloudflare Worker or similar, running on a network OpenSky
- * doesn't block) instead of fetching opensky-network.org directly.
- */
-const RELAY_URL = process.env.OPENSKY_RELAY_URL;
-
-function relayedUrl(upstream: string): string {
-  if (!RELAY_URL) return upstream;
-  return `${RELAY_URL}?upstream=${encodeURIComponent(upstream)}`;
-}
-
 /** Serve the same upstream snapshot to all clients for this long. */
 const SNAPSHOT_TTL_MS = 12_000;
 
@@ -74,7 +58,7 @@ async function getAccessToken(): Promise<string | null> {
 
   let res: Response;
   try {
-    res = await fetch(relayedUrl(TOKEN_URL), {
+    res = await fetch(TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -159,7 +143,7 @@ function parseRow(row: StateRow): Aircraft | null {
 
 async function fetchFromUpstream(): Promise<TelemetrySnapshot> {
   const token = await getAccessToken();
-  const res = await fetch(relayedUrl(STATES_URL), {
+  const res = await fetch(STATES_URL, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     cache: "no-store",
     signal: AbortSignal.timeout(25_000),
@@ -212,7 +196,7 @@ export async function fetchTrack(icao24: string): Promise<TrackPath> {
   let track: TrackPath = { icao24, path: [] };
   try {
     const token = await getAccessToken();
-    const res = await fetch(relayedUrl(`${TRACK_URL}?icao24=${icao24}&time=0`), {
+    const res = await fetch(`${TRACK_URL}?icao24=${icao24}&time=0`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),

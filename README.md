@@ -11,7 +11,7 @@ tracking, and let the camera follow a target around the planet.
 
 - **3D globe** (three.js + react-three-fiber): wireframe continents, graticule,
   atmosphere rim glow; every airborne aircraft rendered in a single instanced
-  draw call (~10k+ targets at 60fps).
+  draw call (~10k+ targets).
 - **Target interaction**: click to expand details, toggle **Track** to pin a
   target, toggle **Follow** to glide the camera with it.
 - **Status colors** (CVD-validated, always paired with glyph + label):
@@ -62,35 +62,17 @@ OPENSKY_CLIENT_SECRET=...
    viewers onto one upstream request per interval.
 
 `vercel.json` pins serverless functions to `fra1` (Frankfurt), close to
-OpenSky's Swiss servers. In practice this alone wasn't enough: OpenSky appears
-to block or drop connections from Vercel's serverless egress IPs at the
-network level (`ConnectTimeoutError`, even from `fra1`) while the exact same
-request succeeds instantly from a residential IP or other non-datacenter
-network. When this happens the app silently falls back to synthetic demo data
-(look for a `DEMO` badge next to the feed status, or an "OpenSky unavailable,
-serving demo data" line in the function logs) — see **Relay** below for the
-fix. Region changes only apply to new deployments — redeploy after editing
-`vercel.json`.
-
-### Relay (if OpenSky blocks your host's IPs)
-
-If the function logs show `ConnectTimeoutError` reaching `opensky-network.org`
-or `auth.opensky-network.org` despite the region pin above, OpenSky is likely
-blocking your hosting provider's IP ranges rather than anything being
-misconfigured. `opensky-relay/` contains a minimal Cloudflare Worker that
-transparently proxies requests to OpenSky from Cloudflare's network instead:
-
-```bash
-cd opensky-relay
-npx wrangler deploy
-```
-
-Then set `OPENSKY_RELAY_URL` (in `.env.local` or Vercel's environment
-variables) to the deployed Worker's URL, e.g.
-`https://kinetic-opensky-relay.<your-subdomain>.workers.dev`. When set, every
-OpenSky request — token, states, and track — is routed through it instead of
-fetching `opensky-network.org` directly. Leave it unset for local dev, where
-direct requests already work fine.
+OpenSky's Swiss servers. Despite this, OpenSky appears to block or drop
+connections from cloud/datacenter IP ranges at the network level — this was
+confirmed against both Vercel's serverless egress (`ConnectTimeoutError`) and
+a Cloudflare Worker relay attempt (`522` from Cloudflare's own edge trying to
+reach OpenSky), while the exact same request succeeds instantly from a
+residential IP. There's currently no practical fix for this on cloud hosting:
+when it happens, the app gracefully falls back to synthetic demo data (look
+for the `DEMO` badge next to the feed status, or an "OpenSky unavailable,
+serving demo data" line in the function logs) rather than showing an error or
+a blank globe. Region changes only apply to new deployments — redeploy after
+editing `vercel.json` if you want to try a different region regardless.
 
 ## Project layout
 

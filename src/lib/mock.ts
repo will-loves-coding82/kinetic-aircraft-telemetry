@@ -12,18 +12,14 @@ import type {
  * quota reached, no credentials, or upstream error) so the dashboard always
  * has a live-feeling swarm to render.
  *
- * Two populations:
- * - **Route flights**: great-circle routes between two real airports, advanced
- *   along their path by wall-clock time — positions drift between polls and
- *   headings, altitudes, and phases stay physically consistent.
- * - **Test clusters**: tight knots of aircraft loitering over fixed US cities,
- *   for exercising zoom-to-distinguish and the marker-scaling behavior.
- *
- * Both populations also expose a `generateMockTrack()` flight path so tracked
+ * All aircraft are route flights: great-circle routes between two real
+ * airports, advanced along their path by wall-clock time — positions drift
+ * between polls and headings, altitudes, and phases stay physically
+ * consistent. Also exposes a `generateMockTrack()` flight path so tracked
  * targets get a real dashed route without any network call.
  */
 
-const FLIGHT_COUNT = 900;
+const FLIGHT_COUNT = 1500;
 /** Fixed epoch so the fleet is continuous across requests/instances. */
 const EPOCH_MS = Date.UTC(2024, 0, 1);
 
@@ -237,91 +233,6 @@ function routeFor(plan: FlightPlan, elapsed: number): Aircraft["route"] {
 }
 
 // ---------------------------------------------------------------------------
-// Test clusters — tight knots loitering over fixed US cities
-// ---------------------------------------------------------------------------
-
-/** Cluster centers, deliberately in the same relative US area for zoom tests. */
-const CLUSTER_CENTERS = [
-  { lat: 40.7, lon: -74.0, tag: "N" }, // New York metro
-  { lat: 41.9, lon: -87.6, tag: "C" }, // Chicago
-  { lat: 34.05, lon: -118.24, tag: "L" }, // Los Angeles
-];
-const PER_CLUSTER = 26;
-/** Tight spread so many markers overlap until you zoom in. */
-const CLUSTER_SPREAD_DEG = 0.28;
-
-interface ClusterCraft {
-  icao24: string;
-  callsign: string;
-  originCountry: string;
-  baseLat: number;
-  baseLon: number;
-  /** Loiter circle radius (degrees) and angular speed (rad/s). */
-  loiterR: number;
-  omega: number;
-  phase: number;
-  altitude: number;
-  verticalRate: number;
-  velocity: number;
-  category: number;
-}
-
-let clusterCache: ClusterCraft[] | null = null;
-let clusterByIcao: Map<string, ClusterCraft> | null = null;
-
-function buildClusters(): ClusterCraft[] {
-  if (clusterCache) return clusterCache;
-  const rand = mulberry32(0x5c1a);
-  const craft: ClusterCraft[] = [];
-  const byIcao = new Map<string, ClusterCraft>();
-  for (const center of CLUSTER_CENTERS) {
-    for (let i = 0; i < PER_CLUSTER; i++) {
-      const airline = AIRLINES[Math.floor(rand() * AIRLINES.length)];
-      const icao24 = Math.floor(rand() * 0xffffff)
-        .toString(16)
-        .padStart(6, "0");
-      const roll = rand();
-      const verticalRate = roll < 0.2 ? 8 : roll < 0.4 ? -8 : 0.2;
-      const c: ClusterCraft = {
-        icao24,
-        callsign: `${airline.code}${100 + Math.floor(rand() * 8900)}`,
-        originCountry: airline.country,
-        baseLat: center.lat + (rand() - 0.5) * CLUSTER_SPREAD_DEG,
-        baseLon: center.lon + (rand() - 0.5) * CLUSTER_SPREAD_DEG,
-        loiterR: 0.02 + rand() * 0.05,
-        omega: (rand() < 0.5 ? 1 : -1) * (0.0006 + rand() * 0.0012),
-        phase: rand() * Math.PI * 2,
-        altitude: 1500 + rand() * 10500,
-        verticalRate,
-        velocity: 150 + rand() * 90,
-        category: 3 + Math.floor(rand() * 4),
-      };
-      craft.push(c);
-      byIcao.set(icao24, c);
-    }
-  }
-  clusterCache = craft;
-  clusterByIcao = byIcao;
-  return craft;
-}
-
-function clusterPosition(
-  c: ClusterCraft,
-  elapsed: number,
-): { latitude: number; longitude: number; trueTrack: number } {
-  const ang = elapsed * c.omega + c.phase;
-  const cosLat = Math.cos(c.baseLat * DEG) || 1e-3;
-  const latitude = c.baseLat + c.loiterR * Math.sin(ang);
-  const longitude = c.baseLon + (c.loiterR * Math.cos(ang)) / cosLat;
-  // Heading = bearing of the velocity vector along the loiter circle.
-  const dLat = c.loiterR * Math.cos(ang) * c.omega;
-  const dLon = (-c.loiterR * Math.sin(ang) * c.omega) / cosLat;
-  const trueTrack =
-    (Math.atan2(dLon * Math.cos(latitude * DEG), dLat) * RAD + 360) % 360;
-  return { latitude, longitude, trueTrack };
-}
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -353,29 +264,6 @@ export function generateMockSnapshot(): TelemetrySnapshot {
     });
   }
 
-  for (const c of buildClusters()) {
-    const p = clusterPosition(c, elapsed);
-    aircraft.push({
-      icao24: c.icao24,
-      callsign: c.callsign,
-      originCountry: c.originCountry,
-      lastContact: nowSec - Math.floor(Math.random() * 8),
-      longitude: p.longitude,
-      latitude: p.latitude,
-      baroAltitude: Math.round(c.altitude),
-      geoAltitude: Math.round(c.altitude + 120),
-      onGround: false,
-      velocity: Math.round(c.velocity * 10) / 10,
-      trueTrack: Math.round(p.trueTrack * 100) / 100,
-      verticalRate: c.verticalRate,
-      squawk: null,
-      category: c.category,
-      status: statusFor(false, c.verticalRate),
-      // Cluster aircraft loiter over a city — no departure/arrival to report.
-      route: null,
-    });
-  }
-
   return {
     time: nowSec,
     fetchedAt: nowMs,
@@ -385,15 +273,14 @@ export function generateMockSnapshot(): TelemetrySnapshot {
   };
 }
 
-/** A synthetic flight path for a mock aircraft (route flights and clusters). */
+/** A synthetic flight path for a mock aircraft (route flight). */
 export function generateMockTrack(icao24: string): TrackPath {
   const nowMs = Date.now();
   const nowSec = Math.floor(nowMs / 1000);
   const elapsed = (nowMs - EPOCH_MS) / 1000;
 
-  // Ensure the lookup maps are populated.
+  // Ensure the lookup map is populated.
   buildPlans();
-  buildClusters();
 
   const plan = plansByIcao?.get(icao24);
   if (plan) {
@@ -411,25 +298,6 @@ export function generateMockTrack(icao24: string): TrackPath {
         latitude: lat,
         longitude: lon,
         altitude: s.onGround ? 0 : Math.round(s.altitude),
-      });
-    }
-    return { icao24, path };
-  }
-
-  const c = clusterByIcao?.get(icao24);
-  if (c) {
-    // Trace the loiter arc over the last ~15 minutes.
-    const window = 900;
-    const steps = 24;
-    const path: TrackPoint[] = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = elapsed - window + (window * i) / steps;
-      const p = clusterPosition(c, t);
-      path.push({
-        time: Math.round(nowSec - window + (window * i) / steps),
-        latitude: p.latitude,
-        longitude: p.longitude,
-        altitude: Math.round(c.altitude),
       });
     }
     return { icao24, path };
