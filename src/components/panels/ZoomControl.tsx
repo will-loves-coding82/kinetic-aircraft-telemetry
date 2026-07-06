@@ -29,12 +29,12 @@ export function ZoomControl({ zoom, onChange }: ZoomControlProps) {
 
   return (
     <motion.div
-      className="pointer-events-none absolute bottom-24 right-3 top-1/2 z-10 hidden -translate-y-1/2 sm:block xl:top-24 xl:translate-y-0"
+      className="pointer-events-none absolute bottom-24 right-3 z-10 hidden sm:block xl:bottom-3"
       initial={{ x: 24, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 280, damping: 28, delay: 0.15 }}
     >
-      <Panel className="flex h-full flex-col items-center gap-2 px-2 py-3">
+      <Panel className="flex flex-col items-center gap-2 px-2 py-3">
         <button
           type="button"
           onClick={() => commit(zoom - STEP)}
@@ -48,12 +48,14 @@ export function ZoomControl({ zoom, onChange }: ZoomControlProps) {
           id="camera-zoom"
           type="range"
           min={0}
-          max={100}
-          step={5}
+          max={1000}
+          step={1}
           // Inverted: slider track shows 0 (in) at the top, so the raw
-          // input value (which increases downward) needs flipping.
-          value={Math.round((1 - zoom) * 100)}
-          onChange={(e) => commit(1 - Number(e.target.value) / 100)}
+          // input value (which increases downward) needs flipping. 1000
+          // steps (vs. the original 20) makes drag input feel continuous
+          // instead of visibly notching between zoom levels.
+          value={Math.round((1 - zoom) * 1000)}
+          onChange={(e) => commit(1 - Number(e.target.value) / 1000)}
           className="h-32 w-1 shrink-0 cursor-pointer appearance-none rounded-full bg-line accent-accent [writing-mode:vertical-lr]"
           style={{ direction: "rtl" }}
           aria-label="Camera zoom: top zoomed in, bottom zoomed out"

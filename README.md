@@ -5,6 +5,8 @@ the [OpenSky Network](https://opensky-network.org/data/api). Zoom, pan, and
 rotate to locate targets, click an aircraft to expand its telemetry, toggle
 tracking, and let the camera follow a target around the planet.
 
+<image src="public/screenshots/horizon_showcase.png"/>
+
 ## Features
 
 - **3D globe** (three.js + react-three-fiber): wireframe continents, graticule,
